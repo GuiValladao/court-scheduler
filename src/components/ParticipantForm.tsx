@@ -235,6 +235,85 @@ export const ParticipantForm: React.FC<ParticipantFormProps> = ({
 		});
 	};
 
+	const copyHoursToAllDays = (sourceDay: string) => {
+		const sourceHours = availability[sourceDay] || [];
+		if (sourceHours.length === 0) return;
+		
+		const newAvailability = { ...availability };
+		DAYS_OF_WEEK.forEach(day => {
+			if (day !== sourceDay) {
+				newAvailability[day] = [...sourceHours];
+			}
+		});
+		setAvailability(newAvailability);
+		
+		// Expand all days to show the copied hours
+		const newExpandedDays = { ...expandedDays };
+		DAYS_OF_WEEK.forEach(day => {
+			newExpandedDays[day] = true;
+		});
+		setExpandedDays(newExpandedDays);
+	};
+
+	const copyHoursToSelectedDays = (sourceDay: string, targetDays: string[]) => {
+		const sourceHours = availability[sourceDay] || [];
+		if (sourceHours.length === 0) return;
+		
+		const newAvailability = { ...availability };
+		targetDays.forEach(day => {
+			if (day !== sourceDay) {
+				newAvailability[day] = [...sourceHours];
+			}
+		});
+		setAvailability(newAvailability);
+	};
+
+	const copyHoursToAllSelectedDates = (sourceDateKey: string) => {
+		const sourceHours = availability[sourceDateKey] || [];
+		if (sourceHours.length === 0) return;
+		
+		const newAvailability = { ...availability };
+		selectedDates.forEach(dateKey => {
+			if (dateKey !== sourceDateKey) {
+				newAvailability[dateKey] = [...sourceHours];
+			}
+		});
+		setAvailability(newAvailability);
+		
+		// Expand all selected dates to show the copied hours
+		const newExpandedDates = { ...expandedCalendarDates };
+		selectedDates.forEach(dateKey => {
+			newExpandedDates[dateKey] = true;
+		});
+		setExpandedCalendarDates(newExpandedDates);
+	};
+
+	const setCommonWorkingHours = () => {
+		const workingHours = [9, 10, 11, 12, 13, 14, 15, 16, 17]; // 9 AM to 5 PM
+		const newAvailability = { ...availability };
+		DAYS_OF_WEEK.slice(0, 5).forEach(day => { // Monday to Friday
+			newAvailability[day] = workingHours;
+		});
+		setAvailability(newAvailability);
+		
+		// Expand weekdays to show the hours
+		const newExpandedDays = { ...expandedDays };
+		DAYS_OF_WEEK.slice(0, 5).forEach(day => {
+			newExpandedDays[day] = true;
+		});
+		setExpandedDays(newExpandedDays);
+	};
+
+	const clearAllDays = () => {
+		setAvailability({});
+		setExpandedDays({});
+	};
+
+	const clearAllSelectedDates = () => {
+		setAvailability({});
+		setExpandedCalendarDates({});
+	};
+
 	const getSelectedHoursText = (day: string) => {
 		const hours = availability[day] || [];
 		if (hours.length === 0) return 'No selected hours';
@@ -487,6 +566,7 @@ export const ParticipantForm: React.FC<ParticipantFormProps> = ({
 										available for each day.               
 									</p>
 
+									{/* Quick Actions */}
 									<div className="space-y-3">
 										{DAYS_OF_WEEK.map((day) => (
 											<div
@@ -520,6 +600,14 @@ export const ParticipantForm: React.FC<ParticipantFormProps> = ({
 																Availability for {day} ({formatTimezone(timezone)}):
 															</span>
 															<div className="flex gap-2">
+																{isDaySelected(day) && (
+																	<button
+																		type="button"
+																		onClick={() => copyHoursToAllDays(day)}
+																		className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
+																		Copy to All Days
+																	</button>
+																)}
 																<button
 																	type="button"
 																	onClick={() => selectAllHours(day)}
@@ -611,9 +699,17 @@ export const ParticipantForm: React.FC<ParticipantFormProps> = ({
 									{/* Selected Dates Time Selection */}
 									{selectedDates.size > 0 && (
 										<div className="space-y-3">
-											<h4 className="text-sm font-medium text-gray-300 mb-3">
-												Configure hours for selected dates:
-											</h4>
+											<div className="flex justify-between items-center mb-3">
+												<h4 className="text-sm font-medium text-gray-300">
+													Configure hours for selected dates:
+												</h4>
+												<button
+													type="button"
+													onClick={clearAllSelectedDates}
+													className="text-xs px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors">
+													Clear All
+												</button>
+											</div>
 											
 											{Array.from(selectedDates).sort().map((dateKey) => {
 												const date = new Date(`${dateKey}T00:00:00`);
@@ -651,6 +747,14 @@ export const ParticipantForm: React.FC<ParticipantFormProps> = ({
 																		Availability for {formatDateDisplay(date)} ({formatTimezone(timezone)}):
 																	</span>
 																	<div className="flex gap-2">
+																		{isDaySelected(dateKey) && (
+																			<button
+																				type="button"
+																				onClick={() => copyHoursToAllSelectedDates(dateKey)}
+																				className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
+																				Copy to All Days
+																			</button>
+																		)}
 																		<button
 																			type="button"
 																			onClick={() => selectAllHours(dateKey)}
