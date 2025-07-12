@@ -48,6 +48,9 @@ function App() {
     }
   };
 
+  // Get the availability type from the first participant (if any)
+  const availabilityType = participants.length > 0 ? participants[0].availabilityType : null;
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#0d1117' }}>
       {/* Header */}
@@ -78,11 +81,16 @@ function App() {
             <Users className="mr-2" size={20} />
             <span className="font-medium">{participants.length} participants</span>
             {participants.length > 0 && (
-              <span className="ml-2 text-sm">
-                • {participants.reduce((total, p) => 
-                  total + Object.values(p.availability).reduce((sum, hours) => sum + hours.length, 0), 0
-                )} total available hours
-              </span>
+              <>
+                <span className="ml-2 text-sm">
+                  • {participants.reduce((total, p) => 
+                    total + Object.values(p.availability).reduce((sum, hours) => sum + hours.length, 0), 0
+                  )} total available hours
+                </span>
+                <span className="ml-2 text-sm">
+                  • Using <strong>{availabilityType === 'weekly' ? 'Weekly Schedule' : 'Specific Dates'}</strong>
+                </span>
+              </>
             )}
           </div>
           
@@ -152,6 +160,7 @@ function App() {
         onClose={() => setIsFormOpen(false)}
         onSubmit={handleAddParticipant}
         userTimezone={userTimezone}
+        existingParticipants={participants}
       />
     </div>
   );

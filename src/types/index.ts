@@ -4,6 +4,7 @@ export interface Participant {
   role: ParticipantRole;
   timezone: string;
   availability: Availability;
+  availabilityType: 'weekly' | 'specific';
   createdAt: string;
 }
 

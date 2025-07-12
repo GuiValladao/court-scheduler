@@ -21,33 +21,212 @@ export const getUserLocale = (): string => {
 };
 
 /**
- * Formats an hour number (0-23) into a localized time string respecting user's locale.
- * Uses 24-hour format for locales that prefer it, AM/PM for others.
+ * Countries that primarily use 12-hour format (AM/PM)
  */
-export const formatTime = (hour: number, locale: string): string => {
-	const date = new Date();
-	date.setHours(hour, 0, 0, 0);
+const COUNTRIES_USING_12_HOUR = new Set([
+	'US', 'CA', 'AU', 'NZ', 'PH', 'MY', 'SG', 'IN', 'PK', 'BD', 'LK', 'NP',
+	'MM', 'KH', 'LA', 'BT', 'MV', 'FJ', 'PW', 'MH', 'FM', 'KI', 'TV', 'NR',
+	'TO', 'WS', 'VU', 'SB', 'PG', 'NC', 'GU', 'AS', 'VI', 'PR', 'MP'
+]);
+
+/**
+ * Timezone to country mapping for common timezones
+ */
+const TIMEZONE_TO_COUNTRY: { [key: string]: string } = {
+	// North America
+	'America/New_York': 'US',
+	'America/Chicago': 'US',
+	'America/Denver': 'US',
+	'America/Los_Angeles': 'US',
+	'America/Phoenix': 'US',
+	'America/Anchorage': 'US',
+	'Pacific/Honolulu': 'US',
+	'America/Toronto': 'CA',
+	'America/Vancouver': 'CA',
+	'America/Montreal': 'CA',
+	'America/Halifax': 'CA',
+	'America/Winnipeg': 'CA',
+	'America/Edmonton': 'CA',
+	'America/Regina': 'CA',
+	'America/St_Johns': 'CA',
 	
-	// Check if the locale typically uses 12-hour format
-	const uses12Hour = isLocale12Hour(locale);
+	// Oceania
+	'Australia/Sydney': 'AU',
+	'Australia/Melbourne': 'AU',
+	'Australia/Brisbane': 'AU',
+	'Australia/Perth': 'AU',
+	'Australia/Adelaide': 'AU',
+	'Australia/Darwin': 'AU',
+	'Australia/Hobart': 'AU',
+	'Pacific/Auckland': 'NZ',
+	'Pacific/Chatham': 'NZ',
 	
-	return date.toLocaleTimeString(locale, { 
-		hour: 'numeric', 
-		hour12: uses12Hour,
-		minute: '2-digit'
-	});
+	// Asia (12-hour countries)
+	'Asia/Manila': 'PH',
+	'Asia/Kuala_Lumpur': 'MY',
+	'Asia/Singapore': 'SG',
+	'Asia/Kolkata': 'IN',
+	'Asia/Mumbai': 'IN',
+	'Asia/Delhi': 'IN',
+	'Asia/Karachi': 'PK',
+	'Asia/Dhaka': 'BD',
+	'Asia/Colombo': 'LK',
+	'Asia/Kathmandu': 'NP',
+	'Asia/Yangon': 'MM',
+	'Asia/Phnom_Penh': 'KH',
+	'Asia/Vientiane': 'LA',
+	'Asia/Thimphu': 'BT',
+	
+	// Europe (24-hour)
+	'Europe/London': 'GB',
+	'Europe/Paris': 'FR',
+	'Europe/Berlin': 'DE',
+	'Europe/Rome': 'IT',
+	'Europe/Madrid': 'ES',
+	'Europe/Amsterdam': 'NL',
+	'Europe/Stockholm': 'SE',
+	'Europe/Moscow': 'RU',
+	'Europe/Istanbul': 'TR',
+	'Europe/Athens': 'GR',
+	'Europe/Vienna': 'AT',
+	'Europe/Brussels': 'BE',
+	'Europe/Copenhagen': 'DK',
+	'Europe/Helsinki': 'FI',
+	'Europe/Oslo': 'NO',
+	'Europe/Warsaw': 'PL',
+	'Europe/Prague': 'CZ',
+	'Europe/Budapest': 'HU',
+	'Europe/Zurich': 'CH',
+	'Europe/Dublin': 'IE',
+	'Europe/Lisbon': 'PT',
+	
+	// South America (24-hour)
+	'America/Sao_Paulo': 'BR',
+	'America/Argentina/Buenos_Aires': 'AR',
+	'America/Lima': 'PE',
+	'America/Bogota': 'CO',
+	'America/Caracas': 'VE',
+	'America/Santiago': 'CL',
+	'America/La_Paz': 'BO',
+	'America/Montevideo': 'UY',
+	'America/Asuncion': 'PY',
+	'America/Guyana': 'GY',
+	'America/Paramaribo': 'SR',
+	'America/Cayenne': 'GF',
+	
+	// Africa (24-hour)
+	'Africa/Cairo': 'EG',
+	'Africa/Lagos': 'NG',
+	'Africa/Johannesburg': 'ZA',
+	'Africa/Nairobi': 'KE',
+	'Africa/Casablanca': 'MA',
+	'Africa/Algiers': 'DZ',
+	'Africa/Tunis': 'TN',
+	'Africa/Tripoli': 'LY',
+	'Africa/Khartoum': 'SD',
+	'Africa/Addis_Ababa': 'ET',
+	'Africa/Dar_es_Salaam': 'TZ',
+	'Africa/Kampala': 'UG',
+	'Africa/Kigali': 'RW',
+	'Africa/Lusaka': 'ZM',
+	'Africa/Harare': 'ZW',
+	'Africa/Maputo': 'MZ',
+	'Africa/Windhoek': 'NA',
+	'Africa/Gaborone': 'BW',
+	'Africa/Maseru': 'LS',
+	'Africa/Mbabane': 'SZ',
+	
+	// Asia (24-hour countries)
+	'Asia/Tokyo': 'JP',
+	'Asia/Shanghai': 'CN',
+	'Asia/Hong_Kong': 'HK',
+	'Asia/Seoul': 'KR',
+	'Asia/Bangkok': 'TH',
+	'Asia/Jakarta': 'ID',
+	'Asia/Ho_Chi_Minh': 'VN',
+	'Asia/Dubai': 'AE',
+	'Asia/Riyadh': 'SA',
+	'Asia/Tehran': 'IR',
+	'Asia/Baghdad': 'IQ',
+	'Asia/Kuwait': 'KW',
+	'Asia/Doha': 'QA',
+	'Asia/Bahrain': 'BH',
+	'Asia/Muscat': 'OM',
+	'Asia/Kabul': 'AF',
+	'Asia/Tashkent': 'UZ',
+	'Asia/Almaty': 'KZ',
+	'Asia/Bishkek': 'KG',
+	'Asia/Dushanbe': 'TJ',
+	'Asia/Ashgabat': 'TM',
+	'Asia/Baku': 'AZ',
+	'Asia/Yerevan': 'AM',
+	'Asia/Tbilisi': 'GE',
+	'Asia/Jerusalem': 'IL',
+	'Asia/Beirut': 'LB',
+	'Asia/Damascus': 'SY',
+	'Asia/Amman': 'JO',
+	'Asia/Nicosia': 'CY'
+};
+
+/**
+ * Determines if user's location typically uses 12-hour format based on timezone
+ */
+export const isUserLocation12Hour = (): boolean => {
+	try {
+		const userTimezone = getUserTimezone();
+		const countryCode = TIMEZONE_TO_COUNTRY[userTimezone];
+		
+		if (countryCode) {
+			return COUNTRIES_USING_12_HOUR.has(countryCode);
+		}
+		
+		// Fallback: check if timezone name suggests 12-hour usage
+		const timezone12HourPatterns = [
+			/America\/(New_York|Chicago|Denver|Los_Angeles|Phoenix|Anchorage)/,
+			/America\/(Toronto|Vancouver|Montreal|Halifax|Winnipeg|Edmonton|Regina)/,
+			/Pacific\/Honolulu/,
+			/Australia\//,
+			/Pacific\/Auckland/,
+			/Asia\/(Manila|Kuala_Lumpur|Singapore|Kolkata|Mumbai|Delhi|Karachi|Dhaka|Colombo)/
+		];
+		
+		return timezone12HourPatterns.some(pattern => pattern.test(userTimezone));
+	} catch (error) {
+		console.error('Error determining time format from location:', error);
+		// Final fallback: use locale-based detection
+		return isLocale12Hour(getUserLocale());
+	}
 };
 
 /**
  * Determines if a locale typically uses 12-hour format (AM/PM)
+ * This is now a fallback method when location-based detection fails
  */
-const isLocale12Hour = (locale: string): boolean => {
+export const isLocale12Hour = (locale: string): boolean => {
 	// Create a test date and format it with the locale's default settings
 	const testDate = new Date(2023, 0, 1, 13, 0, 0); // 1 PM
 	const formatted = testDate.toLocaleTimeString(locale);
 	
 	// If the formatted time contains AM/PM indicators, it's a 12-hour locale
 	return /AM|PM|am|pm|a\.m\.|p\.m\./i.test(formatted);
+};
+
+/**
+ * Formats an hour number (0-23) into a localized time string respecting user's location.
+ * Uses 24-hour format for locations that prefer it, AM/PM for others.
+ */
+export const formatTime = (hour: number, locale: string): string => {
+	const date = new Date();
+	date.setHours(hour, 0, 0, 0);
+	
+	// Use location-based detection first, fallback to locale
+	const uses12Hour = isUserLocation12Hour();
+	
+	return date.toLocaleTimeString(locale, { 
+		hour: 'numeric', 
+		hour12: uses12Hour,
+		minute: '2-digit'
+	});
 };
 
 /**
@@ -69,42 +248,57 @@ const getDayName = (dayIndex: number): string => {
 /**
  * Converts a time slot from participant's timezone to user's timezone using date-fns-tz
  * This handles DST transitions and timezone differences accurately
+ * 
+ * @param participantTimezone - The participant's timezone
+ * @param userTimezone - The user's timezone
+ * @param day - Day name (for weekly) or date string (for specific dates)
+ * @param hour - Hour (0-23)
+ * @param specificDate - Optional: the specific date string (YYYY-MM-DD) for specific date mode
  */
 export const convertTimeSlot = (
 	participantTimezone: string,
 	userTimezone: string,
 	day: string,
-	hour: number
+	hour: number,
+	specificDate?: string
 ): { day: string; hour: number } => {
 	try {
-		// Use current date to ensure proper DST handling
-		const now = new Date();
-		const currentYear = now.getFullYear();
-		const currentMonth = now.getMonth();
-		
-		// Find the next occurrence of the specified day in the current week
-		const today = new Date(currentYear, currentMonth, now.getDate());
-		const todayDayIndex = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
-		const targetDayIndex = getDayIndex(day);
-		
-		if (targetDayIndex === -1) {
-			console.warn(`Invalid day name: ${day}`);
-			return { day, hour };
+		let targetDate: Date;
+
+		if (specificDate) {
+			// For specific dates, use the exact date provided
+			targetDate = new Date(specificDate + 'T00:00:00');
+			targetDate.setHours(hour, 0, 0, 0);
+		} else {
+			// For weekly patterns, use current date logic
+			const now = new Date();
+			const currentYear = now.getFullYear();
+			const currentMonth = now.getMonth();
+			
+			// Find the next occurrence of the specified day in the current week
+			const today = new Date(currentYear, currentMonth, now.getDate());
+			const todayDayIndex = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+			const targetDayIndex = getDayIndex(day);
+			
+			if (targetDayIndex === -1) {
+				console.warn(`Invalid day name: ${day}`);
+				return { day, hour };
+			}
+			
+			// Convert our Monday-based index to JavaScript's Sunday-based index
+			const jsDayIndex = targetDayIndex === 6 ? 0 : targetDayIndex + 1;
+			
+			// Calculate days to add to get to the target day
+			let daysToAdd = jsDayIndex - todayDayIndex;
+			if (daysToAdd < 0) {
+				daysToAdd += 7; // Next week
+			}
+			
+			// Create the target date
+			targetDate = new Date(today);
+			targetDate.setDate(today.getDate() + daysToAdd);
+			targetDate.setHours(hour, 0, 0, 0);
 		}
-		
-		// Convert our Monday-based index to JavaScript's Sunday-based index
-		const jsDayIndex = targetDayIndex === 6 ? 0 : targetDayIndex + 1;
-		
-		// Calculate days to add to get to the target day
-		let daysToAdd = jsDayIndex - todayDayIndex;
-		if (daysToAdd < 0) {
-			daysToAdd += 7; // Next week
-		}
-		
-		// Create the target date
-		const targetDate = new Date(today);
-		targetDate.setDate(today.getDate() + daysToAdd);
-		targetDate.setHours(hour, 0, 0, 0);
 		
 		// Convert participant's local time to UTC
 		const utcTime = zonedTimeToUtc(targetDate, participantTimezone);

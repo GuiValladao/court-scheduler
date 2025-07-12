@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trash2, MapPin, Clock } from 'lucide-react';
+import { Trash2, MapPin, Clock, Calendar } from 'lucide-react';
 import { Participant, ROLE_COLORS } from '../types';
 import { formatTimezone, formatDate, getUserLocale } from '../utils/timezone';
 
@@ -19,6 +19,14 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
       (total, hours) => total + hours.length, 
       0
     );
+  };
+
+  const getAvailabilityTypeText = () => {
+    if (participant.availabilityType === 'specific') {
+      const dateCount = Object.keys(participant.availability).length;
+      return `${dateCount} specific date${dateCount !== 1 ? 's' : ''}`;
+    }
+    return 'Weekly schedule';
   };
 
   return (
@@ -47,8 +55,12 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
           <span>{formatTimezone(participant.timezone)}</span>
         </div>
         <div className="flex items-center">
+          <Calendar size={14} className="mr-2 text-gray-500" />
+          <span>{getAvailabilityTypeText()}</span>
+        </div>
+        <div className="flex items-center">
           <Clock size={14} className="mr-2 text-gray-500" />
-          <span>{getTotalAvailableHours()} hours available per week</span>
+          <span>{getTotalAvailableHours()} hours available total</span>
         </div>
       </div>
 
