@@ -18,12 +18,36 @@ import {
 	PARTICIPANT_ROLES,
 	DAYS_OF_WEEK,
 } from '../types';
-import {
-	formatTimezone,
-	getUserLocale,
-	isUserLocation12Hour,
-} from '../utils/timezone';
-import { COMMON_TIMEZONES } from '../utils/timezones';
+import { formatTimezone, getUserLocale, isUserLocation12Hour } from '../utils/timezone';
+
+// Timezone list with abbreviations and UTC offsets
+const TIMEZONE_OPTIONS = [
+	{ label: 'UTC -12 - Etc/GMT+12', value: 'Etc/GMT+12' },
+	{ label: 'HST UTC -10 - Pacific/Honolulu', value: 'Pacific/Honolulu' },
+	{ label: 'AKST UTC -9 - America/Anchorage', value: 'America/Anchorage' },
+	{ label: 'PST UTC -8 - America/Los_Angeles', value: 'America/Los_Angeles' },
+	{ label: 'MST UTC -7 - America/Denver', value: 'America/Denver' },
+	{ label: 'CST UTC -6 - America/Chicago', value: 'America/Chicago' },
+	{ label: 'EST UTC -5 - America/New_York', value: 'America/New_York' },
+	{ label: 'VET UTC -4  - America/Caracas', value: 'America/Caracas' },
+	{ label: 'BRT UTC -3 - America/Sao_Paulo', value: 'America/Sao_Paulo' },
+	{ label: 'ART UTC -3 - America/Argentina/Buenos_Aires', value: 'America/Argentina/Buenos_Aires' },
+	{ label: 'GST UTC -2 - Etc/GMT+2', value: 'Etc/GMT+2' },
+	{ label: 'AZOT UTC -1 - Atlantic/Azores', value: 'Atlantic/Azores' },
+	{ label: 'GMT UTC +0 - Europe/London', value: 'Europe/London' },
+	{ label: 'CET UTC +1 - Europe/Berlin', value: 'Europe/Berlin' },
+	{ label: 'CET UTC +1 - Europe/Paris', value: 'Europe/Paris' },
+	{ label: 'EET UTC +2 - Africa/Cairo', value: 'Africa/Cairo' },
+	{ label: 'MSK UTC +3 - Europe/Moscow', value: 'Europe/Moscow' },
+	{ label: 'GST UTC +4 - Asia/Dubai', value: 'Asia/Dubai' },
+	{ label: 'PKT UTC +5 - Asia/Karachi', value: 'Asia/Karachi' },
+	{ label: 'BST UTC +6 - Asia/Dhaha', value: 'Asia/Dhaka' },
+	{ label: 'ICT UTC +7 - Asia/Bangkok', value: 'Asia/Bangkok' },
+	{ label: 'HKT UTC +8 - Asia/Hong_Kong', value: 'Asia/Hong_Kong' },
+	{ label: 'JST UTC +9 - Asia/Tokyo', value: 'Asia/Tokyo' },
+	{ label: 'AEST UTC +10 - Australia/Sydney', value: 'Australia/Sydney' },
+	{ label: 'NZST UTC +12 - Pacific/Auckland', value: 'Pacific/Auckland' },
+];
 
 interface ParticipantFormProps {
 	isOpen: boolean;
@@ -58,14 +82,14 @@ const loadLastTimezone = (): string | null => {
 const formatHourForLocation = (hour: number, locale: string): string => {
 	const date = new Date();
 	date.setHours(hour, 0, 0, 0);
-
+	
 	// Use location-based detection for time format
 	const uses12Hour = isUserLocation12Hour();
-
-	return date.toLocaleTimeString(locale, {
-		hour: 'numeric',
+	
+	return date.toLocaleTimeString(locale, { 
+		hour: 'numeric', 
 		hour12: uses12Hour,
-		minute: '2-digit',
+		minute: '2-digit'
 	});
 };
 
@@ -79,21 +103,13 @@ export const ParticipantForm: React.FC<ParticipantFormProps> = ({
 	const [name, setName] = useState('');
 	const [role, setRole] = useState<ParticipantRole>('Witness');
 	const [timezone, setTimezone] = useState(userTimezone);
-	const [availabilityType, setAvailabilityType] = useState<
-		'weekly' | 'specific'
-	>('weekly');
-	const [availability, setAvailability] = useState<{ [day: string]: number[] }>(
-		{}
-	);
-	const [expandedDays, setExpandedDays] = useState<{ [day: string]: boolean }>(
-		{}
-	);
-
+	const [availabilityType, setAvailabilityType] = useState<'weekly' | 'specific'>('weekly');
+	const [availability, setAvailability] = useState<{ [day: string]: number[] }>({});
+	const [expandedDays, setExpandedDays] = useState<{ [day: string]: boolean }>({});
+	
 	// Calendar state
 	const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set());
-	const [expandedCalendarDates, setExpandedCalendarDates] = useState<{
-		[date: string]: boolean;
-	}>({});
+	const [expandedCalendarDates, setExpandedCalendarDates] = useState<{ [date: string]: boolean }>({});
 
 	// Get user locale and location-based time format preference
 	const userLocale = getUserLocale();
@@ -101,9 +117,7 @@ export const ParticipantForm: React.FC<ParticipantFormProps> = ({
 
 	// Determine if availability type is locked based on existing participants
 	const isFirstParticipant = existingParticipants.length === 0;
-	const lockedAvailabilityType = !isFirstParticipant
-		? existingParticipants[0]?.availabilityType
-		: null;
+	const lockedAvailabilityType = !isFirstParticipant ? existingParticipants[0]?.availabilityType : null;
 
 	// Set availability type based on existing participants
 	useEffect(() => {
@@ -117,7 +131,7 @@ export const ParticipantForm: React.FC<ParticipantFormProps> = ({
 		if (isOpen) {
 			// Try to load last used timezone, fallback to user timezone
 			const lastTimezone = loadLastTimezone();
-			if (lastTimezone && COMMON_TIMEZONES.includes(lastTimezone)) {
+			if (lastTimezone && TIMEZONE_OPTIONS.some(tz => tz.value === lastTimezone)) {
 				setTimezone(lastTimezone);
 			} else {
 				setTimezone(userTimezone);
@@ -239,25 +253,25 @@ export const ParticipantForm: React.FC<ParticipantFormProps> = ({
 	const generateCalendarDates = () => {
 		const today = new Date();
 		const startOfCurrentWeek = new Date(today);
-
+		
 		// Ajustar para começar na segunda-feira (Monday = 1, Sunday = 0)
 		const dayOfWeek = today.getDay();
 		const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Se for domingo (0), subtrair 6, senão subtrair (dayOfWeek - 1)
 		startOfCurrentWeek.setDate(today.getDate() - daysToSubtract);
-
+		
 		const weeks = [];
-
+		
 		// Gerar 5 semanas a partir da semana atual
 		for (let week = 0; week < 5; week++) {
 			const weekDates = [];
 			for (let day = 0; day < 7; day++) {
 				const date = new Date(startOfCurrentWeek);
-				date.setDate(startOfCurrentWeek.getDate() + week * 7 + day);
+				date.setDate(startOfCurrentWeek.getDate() + (week * 7) + day);
 				weekDates.push(date);
 			}
 			weeks.push(weekDates);
 		}
-
+		
 		return weeks;
 	};
 
@@ -266,17 +280,17 @@ export const ParticipantForm: React.FC<ParticipantFormProps> = ({
 	};
 
 	const formatDateDisplay = (date: Date) => {
-		return date.toLocaleDateString('en-US', {
-			weekday: 'short',
-			month: 'short',
-			day: 'numeric',
+		return date.toLocaleDateString('en-US', { 
+			weekday: 'short', 
+			month: 'short', 
+			day: 'numeric' 
 		});
 	};
 
 	const toggleCalendarDate = (date: Date) => {
 		const dateKey = formatDateKey(date);
 		const newSelectedDates = new Set(selectedDates);
-
+		
 		if (newSelectedDates.has(dateKey)) {
 			newSelectedDates.delete(dateKey);
 			// Remove from availability
@@ -286,15 +300,15 @@ export const ParticipantForm: React.FC<ParticipantFormProps> = ({
 		} else {
 			newSelectedDates.add(dateKey);
 		}
-
+		
 		setSelectedDates(newSelectedDates);
 	};
 
 	const toggleCalendarDateExpansion = (date: Date) => {
 		const dateKey = formatDateKey(date);
-		setExpandedCalendarDates((prev) => ({
+		setExpandedCalendarDates(prev => ({
 			...prev,
-			[dateKey]: !prev[dateKey],
+			[dateKey]: !prev[dateKey]
 		}));
 	};
 
@@ -318,9 +332,7 @@ export const ParticipantForm: React.FC<ParticipantFormProps> = ({
 
 	return (
 		<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-			<div
-				className="rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto"
-				style={{ backgroundColor: '#161b22' }}>
+			<div className="rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto" style={{ backgroundColor: '#161b22' }}>
 				<div className="p-6 border-b" style={{ borderColor: '#30363d' }}>
 					<div className="flex items-center justify-between">
 						<h2 className="text-2xl font-bold text-white flex items-center">
@@ -380,9 +392,9 @@ export const ParticipantForm: React.FC<ParticipantFormProps> = ({
 								onChange={(e) => setTimezone(e.target.value)}
 								className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-white"
 								style={{ backgroundColor: '#21262d', borderColor: '#30363d' }}>
-								{COMMON_TIMEZONES.map((tz) => (
-									<option key={tz} value={tz}>
-										{formatTimezone(tz)}
+								{TIMEZONE_OPTIONS.map((tz) => (
+									<option key={tz.value} value={tz.value}>
+										{tz.label}
 									</option>
 								))}
 							</select>
@@ -394,56 +406,34 @@ export const ParticipantForm: React.FC<ParticipantFormProps> = ({
 						<label className="block text-sm font-semibold text-gray-300 mb-4">
 							Availability Type
 						</label>
-
+						
 						{/* Show locked message if not first participant */}
 						{!isFirstParticipant && (
-							<div
-								className="rounded-lg p-4 mb-4 border"
-								style={{ backgroundColor: '#0d1117', borderColor: '#30363d' }}>
+							<div className="rounded-lg p-4 mb-4 border" style={{ backgroundColor: '#0d1117', borderColor: '#30363d' }}>
 								<div className="flex items-start">
-									<Info
-										size={16}
-										className="mr-2 text-blue-400 mt-0.5 flex-shrink-0"
-									/>
+									<Info size={16} className="mr-2 text-blue-400 mt-0.5 flex-shrink-0" />
 									<div className="text-sm text-gray-300">
-										<p className="font-medium mb-1">
-											Availability type is locked
-										</p>
+										<p className="font-medium mb-1">Availability type is locked</p>
 										<p>
-											All participants must use the same availability type. The
-											first participant chose{' '}
-											<strong>
-												{lockedAvailabilityType === 'weekly'
-													? 'Weekly Schedule'
-													: 'Specific Dates'}
-											</strong>
-											.
+											All participants must use the same availability type. The first participant chose{' '}
+											<strong>{lockedAvailabilityType === 'weekly' ? 'Weekly Schedule' : 'Specific Dates'}</strong>.
 										</p>
 									</div>
 								</div>
 							</div>
 						)}
-
+						
 						<div className="flex gap-4">
 							<label className="flex items-center cursor-pointer">
 								<input
 									type="radio"
 									value="weekly"
 									checked={availabilityType === 'weekly'}
-									onChange={(e) =>
-										handleAvailabilityTypeChange(
-											e.target.value as 'weekly' | 'specific'
-										)
-									}
+									onChange={(e) => handleAvailabilityTypeChange(e.target.value as 'weekly' | 'specific')}
 									disabled={!isFirstParticipant}
 									className="mr-2"
 								/>
-								<span
-									className={`${
-										!isFirstParticipant && availabilityType !== 'weekly'
-											? 'text-gray-500'
-											: 'text-gray-300'
-									}`}>
+								<span className={`${!isFirstParticipant && availabilityType !== 'weekly' ? 'text-gray-500' : 'text-gray-300'}`}>
 									Weekly Schedule
 								</span>
 							</label>
@@ -452,20 +442,11 @@ export const ParticipantForm: React.FC<ParticipantFormProps> = ({
 									type="radio"
 									value="specific"
 									checked={availabilityType === 'specific'}
-									onChange={(e) =>
-										handleAvailabilityTypeChange(
-											e.target.value as 'weekly' | 'specific'
-										)
-									}
+									onChange={(e) => handleAvailabilityTypeChange(e.target.value as 'weekly' | 'specific')}
 									disabled={!isFirstParticipant}
 									className="mr-2"
 								/>
-								<span
-									className={`${
-										!isFirstParticipant && availabilityType !== 'specific'
-											? 'text-gray-500'
-											: 'text-gray-300'
-									}`}>
+								<span className={`${!isFirstParticipant && availabilityType !== 'specific' ? 'text-gray-500' : 'text-gray-300'}`}>
 									Specific Dates
 								</span>
 							</label>
@@ -475,18 +456,11 @@ export const ParticipantForm: React.FC<ParticipantFormProps> = ({
 					<div>
 						<label className="block text-sm font-semibold text-gray-300 mb-4 flex items-center">
 							<Calendar size={16} className="mr-1" />
-							{availabilityType === 'weekly'
-								? 'Weekly availability'
-								: 'Specific dates availability'}{' '}
-							in the timezone: {formatTimezone(timezone)}
+							{availabilityType === 'weekly' ? 'Weekly availability' : 'Specific dates availability'} in the timezone: {formatTimezone(timezone)}
 						</label>
 
-						<div
-							className="rounded-lg p-4"
-							style={{ backgroundColor: '#0d1117' }}>
-							<div
-								className="rounded-lg p-3 mb-4"
-								style={{ backgroundColor: '#21262d' }}>
+						<div className="rounded-lg p-4" style={{ backgroundColor: '#0d1117' }}>
+							<div className="rounded-lg p-3 mb-4" style={{ backgroundColor: '#21262d' }}>
 								<div className="flex items-start">
 									<Clock size={16} className="mr-2 text-gray-400 mt-0.5" />
 									<div className="text-sm text-gray-300">
@@ -499,9 +473,7 @@ export const ParticipantForm: React.FC<ParticipantFormProps> = ({
 										</p>
 										{uses12HourFormat && (
 											<p className="mt-2 text-blue-300">
-												<strong>Note:</strong> Times are displayed in{' '}
-												{uses12HourFormat ? '12-hour (AM/PM)' : '24-hour'}{' '}
-												format based on your location.
+												<strong>Note:</strong> Times are displayed in {uses12HourFormat ? '12-hour (AM/PM)' : '24-hour'} format based on your location.
 											</p>
 										)}
 									</div>
@@ -511,8 +483,8 @@ export const ParticipantForm: React.FC<ParticipantFormProps> = ({
 							{availabilityType === 'weekly' ? (
 								<>
 									<p className="text-sm text-gray-400 mb-4">
-										Select the days of the week and then choose the schedules
-										available for each day.
+										Select the days of the week and then choose the schedules 
+										available for each day.               
 									</p>
 
 									<div className="space-y-3">
@@ -520,26 +492,16 @@ export const ParticipantForm: React.FC<ParticipantFormProps> = ({
 											<div
 												key={day}
 												className="rounded-lg border"
-												style={{
-													backgroundColor: '#161b22',
-													borderColor: '#30363d',
-												}}>
+												style={{ backgroundColor: '#161b22', borderColor: '#30363d' }}>
 												<button
 													type="button"
 													onClick={() => toggleDay(day)}
 													className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-800 transition-colors rounded-lg">
 													<div className="flex items-center">
-														<Calendar
-															size={16}
-															className="mr-3 text-gray-400"
-														/>
-														<span className="font-medium text-white">
-															{day}
-														</span>
+														<Calendar size={16} className="mr-3 text-gray-400" />
+														<span className="font-medium text-white">{day}</span>
 														{isDaySelected(day) && (
-															<span
-																className="ml-3 px-2 py-1 text-gray-300 text-xs rounded-full"
-																style={{ backgroundColor: '#21262d' }}>
+															<span className="ml-3 px-2 py-1 text-gray-300 text-xs rounded-full" style={{ backgroundColor: '#21262d' }}>
 																{getSelectedHoursText(day)}
 															</span>
 														)}
@@ -552,13 +514,10 @@ export const ParticipantForm: React.FC<ParticipantFormProps> = ({
 												</button>
 
 												{expandedDays[day] && (
-													<div
-														className="px-4 pb-4 border-t"
-														style={{ borderColor: '#30363d' }}>
+													<div className="px-4 pb-4 border-t" style={{ borderColor: '#30363d' }}>
 														<div className="flex justify-between items-center mb-3 pt-3">
 															<span className="text-sm font-medium text-gray-300">
-																Availability for {day} (
-																{formatTimezone(timezone)}):
+																Availability for {day} ({formatTimezone(timezone)}):
 															</span>
 															<div className="flex gap-2">
 																<button
@@ -578,12 +537,7 @@ export const ParticipantForm: React.FC<ParticipantFormProps> = ({
 															</div>
 														</div>
 
-														<div
-															className={`grid gap-2 ${
-																uses12HourFormat
-																	? 'grid-cols-4 sm:grid-cols-6 md:grid-cols-8'
-																	: 'grid-cols-6 sm:grid-cols-8 md:grid-cols-12'
-															}`}>
+														<div className={`grid gap-2 ${uses12HourFormat ? 'grid-cols-4 sm:grid-cols-6 md:grid-cols-8' : 'grid-cols-6 sm:grid-cols-8 md:grid-cols-12'}`}>
 															{Array.from({ length: 24 }, (_, hour) => {
 																const isSelected =
 																	availability[day]?.includes(hour);
@@ -597,11 +551,7 @@ export const ParticipantForm: React.FC<ParticipantFormProps> = ({
 																				? 'bg-blue-600 text-white border-blue-500 shadow-sm'
 																				: 'text-gray-300 hover:bg-gray-700 border-gray-600 hover:border-gray-500'
 																		}`}
-																		style={
-																			!isSelected
-																				? { backgroundColor: '#21262d' }
-																				: {}
-																		}>
+																		style={!isSelected ? { backgroundColor: '#21262d' } : {}}>
 																		{formatHourForLocation(hour, userLocale)}
 																	</button>
 																);
@@ -616,39 +566,31 @@ export const ParticipantForm: React.FC<ParticipantFormProps> = ({
 							) : (
 								<>
 									<p className="text-sm text-gray-400 mb-4">
-										Select specific dates (next 5 weeks) and then choose the
-										available hours for each selected date.
+										Select specific dates (next 5 weeks) and then choose the available hours for each selected date.
 									</p>
 
 									{/* Calendar Grid */}
 									<div className="mb-6">
 										<div className="grid grid-cols-7 gap-1 mb-2">
 											{['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => (
-												<div
-													key={index}
-													className="text-center text-xs font-medium text-gray-400 p-2">
+												<div key={index} className="text-center text-xs font-medium text-gray-400 p-2">
 													{day}
 												</div>
 											))}
 										</div>
-
+										
 										{calendarDates.map((week, weekIndex) => (
-											<div
-												key={weekIndex}
-												className="grid grid-cols-7 gap-1 mb-1">
+											<div key={weekIndex} className="grid grid-cols-7 gap-1 mb-1">
 												{week.map((date, dayIndex) => {
 													const isSelected = isDateSelected(date);
-													const isToday =
-														date.toDateString() === new Date().toDateString();
+													const isToday = date.toDateString() === new Date().toDateString();
 													const isPast = isDateInPast(date);
-
+													
 													return (
 														<button
 															key={dayIndex}
 															type="button"
-															onClick={() =>
-																!isPast && toggleCalendarDate(date)
-															}
+															onClick={() => !isPast && toggleCalendarDate(date)}
 															disabled={isPast}
 															className={`p-2 text-xs rounded border transition-all ${
 																isPast
@@ -657,11 +599,7 @@ export const ParticipantForm: React.FC<ParticipantFormProps> = ({
 																	? 'bg-blue-600 text-white border-blue-500'
 																	: 'text-gray-300 hover:bg-gray-700 border-gray-600 hover:border-gray-500'
 															} ${isToday ? 'ring-1 ring-blue-400' : ''}`}
-															style={
-																!isSelected && !isPast
-																	? { backgroundColor: '#21262d' }
-																	: {}
-															}>
+															style={!isSelected && !isPast ? { backgroundColor: '#21262d' } : {}}>
 															{date.getDate()}
 														</button>
 													);
@@ -676,122 +614,84 @@ export const ParticipantForm: React.FC<ParticipantFormProps> = ({
 											<h4 className="text-sm font-medium text-gray-300 mb-3">
 												Configure hours for selected dates:
 											</h4>
-
-											{Array.from(selectedDates)
-												.sort()
-												.map((dateKey) => {
-													const date = new Date(`${dateKey}T00:00:00`);
-													const isExpanded = isDateExpanded(date);
-
-													return (
-														<div
-															key={dateKey}
-															className="rounded-lg border"
-															style={{
-																backgroundColor: '#161b22',
-																borderColor: '#30363d',
-															}}>
-															<button
-																type="button"
-																onClick={() =>
-																	toggleCalendarDateExpansion(date)
-																}
-																className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-800 transition-colors rounded-lg">
-																<div className="flex items-center">
-																	<Calendar
-																		size={16}
-																		className="mr-3 text-gray-400"
-																	/>
-																	<span className="font-medium text-white">
-																		{formatDateDisplay(date)}
+											
+											{Array.from(selectedDates).sort().map((dateKey) => {
+												const date = new Date(`${dateKey}T00:00:00`);
+												const isExpanded = isDateExpanded(date);
+												
+												return (
+													<div
+														key={dateKey}
+														className="rounded-lg border"
+														style={{ backgroundColor: '#161b22', borderColor: '#30363d' }}>
+														<button
+															type="button"
+															onClick={() => toggleCalendarDateExpansion(date)}
+															className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-800 transition-colors rounded-lg">
+															<div className="flex items-center">
+																<Calendar size={16} className="mr-3 text-gray-400" />
+																<span className="font-medium text-white">{formatDateDisplay(date)}</span>
+																{isDaySelected(dateKey) && (
+																	<span className="ml-3 px-2 py-1 text-gray-300 text-xs rounded-full" style={{ backgroundColor: '#21262d' }}>
+																		{getSelectedHoursText(dateKey)}
 																	</span>
-																	{isDaySelected(dateKey) && (
-																		<span
-																			className="ml-3 px-2 py-1 text-gray-300 text-xs rounded-full"
-																			style={{ backgroundColor: '#21262d' }}>
-																			{getSelectedHoursText(dateKey)}
-																		</span>
-																	)}
-																</div>
-																{isExpanded ? (
-																	<ChevronUp
-																		size={20}
-																		className="text-gray-400"
-																	/>
-																) : (
-																	<ChevronDown
-																		size={20}
-																		className="text-gray-400"
-																	/>
 																)}
-															</button>
+															</div>
+															{isExpanded ? (
+																<ChevronUp size={20} className="text-gray-400" />
+															) : (
+																<ChevronDown size={20} className="text-gray-400" />
+															)}
+														</button>
 
-															{isExpanded && (
-																<div
-																	className="px-4 pb-4 border-t"
-																	style={{ borderColor: '#30363d' }}>
-																	<div className="flex justify-between items-center mb-3 pt-3">
-																		<span className="text-sm font-medium text-gray-300">
-																			Availability for {formatDateDisplay(date)}{' '}
-																			({formatTimezone(timezone)}):
-																		</span>
-																		<div className="flex gap-2">
-																			<button
-																				type="button"
-																				onClick={() => selectAllHours(dateKey)}
-																				className="text-xs px-2 py-1 text-gray-300 rounded hover:bg-gray-700 transition-colors"
-																				style={{ backgroundColor: '#21262d' }}>
-																				Select All
-																			</button>
-																			<button
-																				type="button"
-																				onClick={() => clearAllHours(dateKey)}
-																				className="text-xs px-2 py-1 text-gray-300 rounded hover:bg-gray-700 transition-colors"
-																				style={{ backgroundColor: '#21262d' }}>
-																				Clean
-																			</button>
-																		</div>
-																	</div>
-
-																	<div
-																		className={`grid gap-2 ${
-																			uses12HourFormat
-																				? 'grid-cols-4 sm:grid-cols-6 md:grid-cols-8'
-																				: 'grid-cols-6 sm:grid-cols-8 md:grid-cols-12'
-																		}`}>
-																		{Array.from({ length: 24 }, (_, hour) => {
-																			const isSelected =
-																				availability[dateKey]?.includes(hour);
-																			return (
-																				<button
-																					key={hour}
-																					type="button"
-																					onClick={() =>
-																						toggleTimeSlot(dateKey, hour)
-																					}
-																					className={`px-2 py-2 text-xs rounded-md border transition-all ${
-																						isSelected
-																							? 'bg-blue-600 text-white border-blue-500 shadow-sm'
-																							: 'text-gray-300 hover:bg-gray-700 border-gray-600 hover:border-gray-500'
-																					}`}
-																					style={
-																						!isSelected
-																							? { backgroundColor: '#21262d' }
-																							: {}
-																					}>
-																					{formatHourForLocation(
-																						hour,
-																						userLocale
-																					)}
-																				</button>
-																			);
-																		})}
+														{isExpanded && (
+															<div className="px-4 pb-4 border-t" style={{ borderColor: '#30363d' }}>
+																<div className="flex justify-between items-center mb-3 pt-3">
+																	<span className="text-sm font-medium text-gray-300">
+																		Availability for {formatDateDisplay(date)} ({formatTimezone(timezone)}):
+																	</span>
+																	<div className="flex gap-2">
+																		<button
+																			type="button"
+																			onClick={() => selectAllHours(dateKey)}
+																			className="text-xs px-2 py-1 text-gray-300 rounded hover:bg-gray-700 transition-colors"
+																			style={{ backgroundColor: '#21262d' }}>
+																			Select All
+																		</button>
+																		<button
+																			type="button"
+																			onClick={() => clearAllHours(dateKey)}
+																			className="text-xs px-2 py-1 text-gray-300 rounded hover:bg-gray-700 transition-colors"
+																			style={{ backgroundColor: '#21262d' }}>
+																			Clean
+																		</button>
 																	</div>
 																</div>
-															)}
-														</div>
-													);
-												})}
+
+																<div className={`grid gap-2 ${uses12HourFormat ? 'grid-cols-4 sm:grid-cols-6 md:grid-cols-8' : 'grid-cols-6 sm:grid-cols-8 md:grid-cols-12'}`}>
+																	{Array.from({ length: 24 }, (_, hour) => {
+																		const isSelected = availability[dateKey]?.includes(hour);
+																		return (
+																			<button
+																				key={hour}
+																				type="button"
+																				onClick={() => toggleTimeSlot(dateKey, hour)}
+																				className={`px-2 py-2 text-xs rounded-md border transition-all ${
+																					isSelected
+																						? 'bg-blue-600 text-white border-blue-500 shadow-sm'
+																						: 'text-gray-300 hover:bg-gray-700 border-gray-600 hover:border-gray-500'
+																				}`}
+																				style={!isSelected ? { backgroundColor: '#21262d' } : {}}>
+																				{formatHourForLocation(hour, userLocale)}
+																			</button>
+																		);
+																	})}
+																</div>
+															</div>
+														)}
+													</div>
+												);
+											})}
 										</div>
 									)}
 								</>
