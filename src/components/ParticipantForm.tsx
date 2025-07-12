@@ -561,10 +561,21 @@ export const ParticipantForm: React.FC<ParticipantFormProps> = ({
 
 							{availabilityType === 'weekly' ? (
 								<>
-									<p className="text-sm text-gray-400 mb-4">
-										Select the days of the week and then choose the schedules 
-										available for each day.               
-									</p>
+                  <div className="space-y-3">
+                  <div className="flex justify-between items-center mb-3">
+                    <h4 className="text-sm font-medium text-gray-300">
+										  Select the days of the week and then choose the schedules 
+										  available for each day.
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={clearAllSelectedDates}
+                      className="text-xs px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors">
+                      Clear All
+                    </button>
+                  </div>
+                </div>
+                  
 
 									{/* Quick Actions */}
 									<div className="space-y-3">
